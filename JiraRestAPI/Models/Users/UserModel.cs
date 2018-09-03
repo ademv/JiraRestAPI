@@ -8,7 +8,8 @@ namespace JiraRestAPI.Models.Users
     
     public class UserModel
     {
-
+        public string Id { get; set; }
+        public string  OrganizationID { get; set; }
         public string self { get; set; }
         public string key { get; set; }
         public string accountId { get; set; }

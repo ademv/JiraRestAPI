@@ -1,8 +1,10 @@
 ﻿using JiraRestAPI.Models;
 using JiraRestAPI.Models.Users;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -45,6 +47,47 @@ namespace JiraRestAPI.Services
             }
 
 
+        }
+
+
+        public HttpStatusCode Post(object o,string action)
+        {
+            try
+            {
+                var response = httpclient.PostAsJsonAsync(action,o);
+
+                return response.Result.StatusCode;
+              
+
+            }
+
+            catch (Exception)
+            {
+                return HttpStatusCode.InternalServerError;
+            }
+        }
+
+        public HttpStatusCode Delete(object o, string action)
+        {
+            try
+            {
+                var response = httpclient.SendAsync(
+                new HttpRequestMessage(HttpMethod.Delete, action)
+                {
+                    Content = new StringContent(JsonConvert.SerializeObject(o), Encoding.UTF8, "application/json")
+                })
+                .Result;
+
+
+                return response.StatusCode;
+
+
+            }
+
+            catch (Exception)
+            {
+                return HttpStatusCode.InternalServerError;
+            }
         }
     }
 }
