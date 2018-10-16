@@ -26,7 +26,7 @@ namespace JiraRestAPI
            );
             config.Routes.MapHttpRoute(
              name: "JiraVersionIssues",
-             routeTemplate: "api/jira/organizations/{action}/{id}",
+             routeTemplate: "api/jira/issue/{action}/{id}",
              defaults: new { id = RouteParameter.Optional, controller = "Issue" }
          );
             config.Routes.MapHttpRoute(
