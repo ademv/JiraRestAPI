@@ -1,4 +1,5 @@
 ﻿using JiraRestAPI.Models;
+using JiraRestAPI.Models.Organization;
 using JiraRestAPI.Models.Users;
 using Newtonsoft.Json;
 using System;
@@ -67,12 +68,63 @@ namespace JiraRestAPI.Services
             }
         }
 
+        public Organization PostOrganization(object o,string action)
+        {
+            try
+            {
+                var response = httpclient.PostAsJsonAsync(action, o).Result;
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var objectresponse = response.Content.ReadAsAsync<Organization>().Result;
+                    return objectresponse;
+                }
+                else
+                {
+
+                    return null;
+                }
+
+
+            }
+
+            catch (Exception)
+            {
+                return null;
+            }
+
+           
+        }
+
         public HttpStatusCode Delete(object o, string action)
         {
             try
             {
                 var response = httpclient.SendAsync(
                 new HttpRequestMessage(HttpMethod.Delete, action)
+                {
+                    Content = new StringContent(JsonConvert.SerializeObject(o), Encoding.UTF8, "application/json")
+                })
+                .Result;
+
+
+                return response.StatusCode;
+
+
+            }
+
+            catch (Exception)
+            {
+                return HttpStatusCode.InternalServerError;
+            }
+        }
+
+        public HttpStatusCode Put(object o, string action)
+        {
+            try
+            {
+                var response = httpclient.SendAsync(
+                new HttpRequestMessage(HttpMethod.Put, action)
                 {
                     Content = new StringContent(JsonConvert.SerializeObject(o), Encoding.UTF8, "application/json")
                 })

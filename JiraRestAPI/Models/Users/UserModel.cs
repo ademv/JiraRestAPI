@@ -19,5 +19,6 @@ namespace JiraRestAPI.Models.Users
         public bool active { get; set; }
         public string timeZone { get; set; }
         public string locale { get; set; }
+        public string OrganizationName { get; set; }
     }
 }

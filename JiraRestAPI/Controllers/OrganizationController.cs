@@ -1,14 +1,10 @@
-﻿using JiraRestAPI.Models;
-using JiraRestAPI.Models.IMS;
-using JiraRestAPI.Models.Organization;
+﻿using JiraRestAPI.Models.Organization;
 using JiraRestAPI.Models.Users;
 using JiraRestAPI.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
-using System.Net.Http;
-using System.Text;
 using System.Web.Http;
 using System.Web.Http.Cors;
 
@@ -27,52 +23,115 @@ namespace JiraRestAPI.Controllers
         /// <param name="model"></param>
         /// <returns></returns>
         [HttpPost]
-        public IHttpActionResult AddUserToOrganization(UserToOrganizationModel model)
+        public IHttpActionResult AddUserToOrganization(List<UserToOrganizationModel> model)
         {
 
+            if (model == null || model.Count == 0)
+            {
+                BadRequest();
+            }
+
+            bool IMSInsert = dataservise.UpdateUserOrganization(model.Select(x => x.username).ToList(), model.Select(x => x.OrganizationId).First());
+
+            if (IMSInsert)
+            {
+
+                string msg;
+
+                var response = jiraservice.AddUserToOrganization(model);
+                if (response == HttpStatusCode.NoContent)
+                {
+                    msg = "Perdoruesi/t u shtua/n me sukses ne organizate,Jira level  !";
+
+                }
+                else
+                {
+                    msg = "Perdoruesi/t nuk u shtua/n ne organizate, Jira " + response.ToString() + " ::  Reference: https://developer.atlassian.com/cloud/jira/service-desk/rest/#api-organization-organizationId-user-post";
+
+                }
+
+                return Ok(msg);
+            }
+            else
+            {
+                return InternalServerError(new Exception("Perdoruesi nuk u shtua ne organizate,  Ims level!"));
+
+            }
+        }
+
+
+        public IHttpActionResult ChangeUserOrganization(List<UserToOrganizationModel> model)
+        {
             if (model == null)
             {
                 BadRequest();
             }
-            var response = jiraservice.AddUserToOrganization(model);
-            if (response == HttpStatusCode.NoContent)
+
+
+
+            bool IMSInsert = dataservise.UpdateUserOrganization(model.Select(x => x.username).ToList(), model.Select(x => x.OrganizationId).First());
+
+            if (IMSInsert)
             {
-                var allupdated= dataservise.UpdateUserOrganization(model.usernames, model.OrganizationId);
-                string mesg2;
-                mesg2 = " Perdoruesit nuk u shtuan lokalisht!";
-                if (allupdated)
+                var response = jiraservice.ChangeUserOrganization(model);
+                string msg;
+                if (response == HttpStatusCode.NoContent)
                 {
-                    mesg2 = "Perdoruesit  u shtuan lokalisht!";
+                    msg = "Perdoruesi/t u shtua/n me sukses ne organizate,Jira level  !";
                 }
-                return Ok("Perdoruesi u shtua me sukses ne jira !"+" "+mesg2);
+                else
+                {
+                    msg = "Perdoruesi/t nuk u shtua/n ne organizate, Jira " + response.ToString() + " ::  Reference: https://developer.atlassian.com/cloud/jira/service-desk/rest/#api-organization-organizationId-user-post";
+                }
+                // dataservise.UpdateUserSync(model.usernames, type, model.IssueUpdate, "",model.OrganizationId);
+                return Ok(msg);
             }
+            else
+            {
 
-            return InternalServerError(new Exception("Statusi nga Jira:" + response.ToString() + "  Reference : https://developer.atlassian.com/cloud/jira/service-desk/rest/#api-organization-organizationId-user-post"));
+                return InternalServerError(new Exception("Perdoruesi/t nuk u shtua/n ne organizate,  Ims level !"));
+            }
         }
-
         /// <summary>
         /// Heq perdoruesin nga Organizata
         /// </summary>
         /// <param name="model"></param>
         /// <returns></returns>
         [HttpDelete]
-        public IHttpActionResult RemoveUsersFromOrganization(UserToOrganizationModel model)
+        public IHttpActionResult RemoveUsersFromOrganization(List<UserToOrganizationModel> model)
         {
             if (model == null)
             {
                 return BadRequest();
             }
-            var response = jiraservice.RemoveUsersFromOrganization(model);
 
-            if (response == HttpStatusCode.NoContent)
+            var isdeleted = dataservise.UpdateUserOrganization(model.Select(x => x.username).ToList(), "-1");
+            if (isdeleted)
             {
-                return Ok("Perdoruesi/t u hoqen nga organizata me sukses !");
-            }
+                string msg;
+                var response = jiraservice.RemoveUsersFromOrganization(model);
 
-            return InternalServerError(new Exception("Statusi nga Jira:" + response.ToString() + "  Reference : https://developer.atlassian.com/cloud/jira/service-desk/rest/#api-organization-organizationId-user-delete"));
+                if (response == HttpStatusCode.NoContent)
+                {
+
+                    msg = "Perdoruesi/t u hoq/en nga organizata me sukses !";
+                }
+                else
+                {
+                    msg = " Perdoruesi/t nuk u fshi/ne nga Statusi nga Jira: " + response.ToString() + "  Reference: https://developer.atlassian.com/cloud/jira/service-desk/rest/#api-organization-organizationId-user-delete";
+                }
+
+                //  dataservise.UpdateUserSync(model.usernames, type, model.IssueUpdate, "",model.OrganizationId);
+                return Ok(msg);
+            }
+            else
+            {
+
+                return InternalServerError(new Exception("Perdoruesi/t nuk u hoq/en nga orginazata,IMS level"));
+            }
         }
 
-       
+
 
 
         /// <summary>
@@ -83,15 +142,17 @@ namespace JiraRestAPI.Controllers
         [HttpPost]
         public IHttpActionResult CreateOrganization(Organization model)
         {
-            if (model==null||model.name == null || model.name == "")
+            if (model == null || model.name == null || model.name == "")
             {
                 return BadRequest();
             }
 
-            var response = jiraservice.CreateOrganization(model.name);
+            var response = jiraservice.CreateOrganization(model);
 
             if (response == HttpStatusCode.NoContent)
             {
+
+
                 return Ok("Organizata u krijua me sukses !");
             }
 
@@ -99,23 +160,32 @@ namespace JiraRestAPI.Controllers
         }
 
         [HttpDelete]
-        public  IHttpActionResult DeleteOrganization(Organization model)
+        public IHttpActionResult DeleteOrganization(Organization model)
         {
 
-            if (model == null)
+            if (model == null || model.id == "0")
             {
                 return BadRequest();
             }
 
-            var response = jiraservice.DeleteOrganization(model);
 
-            if (response == HttpStatusCode.NoContent)
+            var logicalDelete = dataservise.DeleteOrganization(model.id);
+
+            if (logicalDelete)
             {
-                return Ok("Organizata u fshi me sukses");
+                var response = jiraservice.DeleteOrganization(model);
+
+                if (response == HttpStatusCode.NoContent)
+                {
+                    return Ok("Organizata u fshi me sukses");
+                }
+
+                return Ok(new Exception("Statusi nga Jira:" + response.ToString() + "  Reference : https://developer.atlassian.com/cloud/jira/service-desk/rest/#api-organization-organizationId-delete"));
             }
-
-            return InternalServerError(new Exception("Statusi nga Jira:" + response.ToString() + "  Reference : https://developer.atlassian.com/cloud/jira/service-desk/rest/#api-organization-organizationId-delete"));
-
+            else
+            {
+                return InternalServerError(new Exception("Organizata nuk u fshij me sukses, IMS level"));
+            }
         }
 
         [HttpGet]

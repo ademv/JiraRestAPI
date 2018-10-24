@@ -85,6 +85,25 @@ namespace JiraRestAPI.Controllers
             }
             return Ok(nr);
         }
+        [HttpPost]
+        public IHttpActionResult GetConnectedUsers(Filter filter)
+        {
+            var nr = data.GetConnectedUsers(filter);
+            if (nr == null)
+            {
+                return InternalServerError();
+            }
+            return Ok(nr);
+        }
+        public IHttpActionResult GetTotalConnectedUsers()
+        {
+            var nr = data.GetTotalConnectedUsers();
+            if (nr == null)
+            {
+                return InternalServerError();
+            }
+            return Ok(nr);
+        }
 
     }
 }

@@ -24,6 +24,7 @@
     <UseGlobalApplicationHostFile />
     <NuGetPackageImportStamp>
     </NuGetPackageImportStamp>
+    <Use64BitIISExpress />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -155,12 +156,17 @@
     <Compile Include="Models\IMS\CompanyIssueComment.cs" />
     <Compile Include="Models\IMS\Filter.cs" />
     <Compile Include="Models\IMS\OrganizationWithUsers.cs" />
+    <Compile Include="Models\Issue\Customfield10004.cs" />
     <Compile Include="Models\Issue\Issue.cs" />
+    <Compile Include="Models\Issue\IssueModel.cs" />
+    <Compile Include="Models\Issue\IssueOrganizationFiled.cs" />
     <Compile Include="Models\Issue\IssuesSearch.cs" />
     <Compile Include="Models\Organization\Links.cs" />
     <Compile Include="Models\Organization\OranizationsBag.cs" />
     <Compile Include="Models\Organization\Organization.cs" />
     <Compile Include="Models\Users\AddUserToOrganizationModel.cs" />
+    <Compile Include="Models\Users\DeleteUserModel.cs" />
+    <Compile Include="Models\Users\DeleteUserModelResponse.cs" />
     <Compile Include="Models\Users\UserBag.cs" />
     <Compile Include="Models\Users\UserModel.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

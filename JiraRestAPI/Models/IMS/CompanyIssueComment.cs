@@ -7,8 +7,10 @@ namespace JiraRestAPI.Models.IMS
 {
     public class CompanyIssueComment
     {
-        public string JQL;
-        public string Comment;
-        public string Company;
+        public string JQL { get; set; }
+        public string Comment { get; set; }
+        public string Company { get; set; }
+        public string OrganizationId { get; set; }
+        public int customField_10075 { get; set; }
     }
 }

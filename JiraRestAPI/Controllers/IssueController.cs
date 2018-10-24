@@ -56,7 +56,7 @@ namespace JiraRestAPI.Controllers
                 return InternalServerError(new Exception("Gabim ne marrjen e issue"));
             }
 
-            jiraservice.AddComentsIntoIssues(result, model.Comment);
+            jiraservice.AddComentsIntoIssues(result, model.Comment,model.customField_10075);
 
             return Ok("Issues u perditsuan  me sukes");
 

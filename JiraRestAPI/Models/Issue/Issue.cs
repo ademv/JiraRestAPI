@@ -11,5 +11,6 @@ namespace JiraRestAPI.Models.Issue
         public string id { get; set; }
         public string self { get; set; }
         public string key { get; set; }
+        public Customfield10004 customfield_10004;
     }
 }
