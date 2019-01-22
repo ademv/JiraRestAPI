@@ -12,5 +12,6 @@ namespace JiraRestAPI.Models.Users
         public  string username { get; set; }
         public  bool IssueUpdate { get; set; }
         public string UserToAssign { get; set; }
+        public string DisplayName { get; set; }
     }
 }

@@ -1,16 +1,11 @@
 ﻿using JiraRestAPI.Models;
 using JiraRestAPI.Models.Organization;
-using JiraRestAPI.Models.Users;
 using Newtonsoft.Json;
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
-using System.Threading.Tasks;
-using System.Web;
 
 namespace JiraRestAPI.Services
 {
@@ -19,11 +14,11 @@ namespace JiraRestAPI.Services
 
         public HttpClient httpclient;
 
-        public HttpClientService(string Username,string Password,string BaseUri)
+        public HttpClientService(string Username, string Password, string BaseUri)
         {
             httpclient = new HttpClient();
 
-            var byteArray = Encoding.ASCII.GetBytes(Username+":"+Password);
+            var byteArray = Encoding.ASCII.GetBytes(Username + ":" + Password);
             httpclient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(byteArray));
             httpclient.Timeout = TimeSpan.FromMinutes(5);
             httpclient.BaseAddress = new Uri(BaseUri);
@@ -35,14 +30,14 @@ namespace JiraRestAPI.Services
 
             try
             {
-                var response =  httpclient.GetAsync(action);
+                var response = httpclient.GetAsync(action);
 
                 response.Result.EnsureSuccessStatusCode();
                 return response.Result.Content.ReadAsAsync<T>().Result;
 
             }
 
-            catch (Exception ex)
+            catch (Exception)
             {
                 return null;
             }
@@ -51,24 +46,45 @@ namespace JiraRestAPI.Services
         }
 
 
-        public HttpStatusCode Post(object o,string action)
+        public BaseResponseMessage Post(object o, string action)
         {
             try
             {
-                var response = httpclient.PostAsJsonAsync(action,o);
+                var response = httpclient.PostAsJsonAsync(action, o).Result;
 
-                return response.Result.StatusCode;
-              
+                if (response.IsSuccessStatusCode)
+                {
+                    return new BaseResponseMessage
+                    {
+                        status = true,
+                        message = "Sukses !"
+                    };
+
+                }
+                else
+                {
+                    var err = response.Content.ReadAsStringAsync().Result;
+
+                    return new BaseResponseMessage
+                    {
+                        status = false,
+                        message = err
+                    };
+                }
 
             }
 
-            catch (Exception)
+            catch (Exception e)
             {
-                return HttpStatusCode.InternalServerError;
+                return new BaseResponseMessage
+                {
+                    status = false,
+                    message = e.Message
+                };
             }
         }
 
-        public Organization PostOrganization(object o,string action)
+        public Organization PostOrganization(object o, string action)
         {
             try
             {
@@ -93,10 +109,10 @@ namespace JiraRestAPI.Services
                 return null;
             }
 
-           
+
         }
 
-        public HttpStatusCode Delete(object o, string action)
+        public BaseResponseMessage Delete(object o, string action)
         {
             try
             {
@@ -108,18 +124,40 @@ namespace JiraRestAPI.Services
                 .Result;
 
 
-                return response.StatusCode;
+                if (response.IsSuccessStatusCode)
+                {
+                    return new BaseResponseMessage
+                    {
+                        status = true,
+                        message = "Sukses !"
+                    };
+
+                }
+                else
+                {
+                    var err = response.Content.ReadAsStringAsync().Result;
+
+                    return new BaseResponseMessage
+                    {
+                        status = false,
+                        message = err
+                    };
+                }
 
 
             }
 
-            catch (Exception)
+            catch (Exception e)
             {
-                return HttpStatusCode.InternalServerError;
+                return new BaseResponseMessage
+                {
+                    status = false,
+                    message = e.Message
+                };
             }
         }
 
-        public HttpStatusCode Put(object o, string action)
+        public BaseResponseMessage  Put(object o, string action)
         {
             try
             {
@@ -130,15 +168,37 @@ namespace JiraRestAPI.Services
                 })
                 .Result;
 
+                if (response.IsSuccessStatusCode)
+                {
+                    return new BaseResponseMessage
+                    {
+                        status = true,
+                        message = "Sukses !"
+                    };
 
-                return response.StatusCode;
+                }
+                else
+                {
+                    var err = response.Content.ReadAsStringAsync().Result;
+
+                    return new BaseResponseMessage
+                    {
+                        status = false,
+                        message = err
+                    };
+                }
+             
 
 
             }
 
-            catch (Exception)
+            catch (Exception e)
             {
-                return HttpStatusCode.InternalServerError;
+                return new BaseResponseMessage
+                {
+                    status = false,
+                    message = e.Message
+                };
             }
         }
     }

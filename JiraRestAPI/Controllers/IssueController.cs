@@ -32,7 +32,7 @@ namespace JiraRestAPI.Controllers
 
             var response = jiraservice.AddCommentToIssue(model.issue, new Models.Comment.CommentModel { body = model.body });
 
-            if (response == HttpStatusCode.Created)
+            if (response.status)
             {
                 return Ok("Komenti u shtua me sukes");
             }

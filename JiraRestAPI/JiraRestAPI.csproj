@@ -164,6 +164,8 @@
     <Compile Include="Models\Organization\Links.cs" />
     <Compile Include="Models\Organization\OranizationsBag.cs" />
     <Compile Include="Models\Organization\Organization.cs" />
+    <Compile Include="Models\Organization\OrganizationResponseModel.cs" />
+    <Compile Include="Models\TransactionModel.cs" />
     <Compile Include="Models\Users\AddUserToOrganizationModel.cs" />
     <Compile Include="Models\Users\DeleteUserModel.cs" />
     <Compile Include="Models\Users\DeleteUserModelResponse.cs" />

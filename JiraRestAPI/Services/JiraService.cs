@@ -1,4 +1,5 @@
-﻿using JiraRestAPI.Models.Comment;
+﻿using JiraRestAPI.Models;
+using JiraRestAPI.Models.Comment;
 using JiraRestAPI.Models.IMS;
 using JiraRestAPI.Models.Issue;
 using JiraRestAPI.Models.Organization;
@@ -25,7 +26,6 @@ namespace JiraRestAPI.Services
 
             httpservice = new HttpClientService(config["username"], config["password"], config["url"]);
         }
-
 
 
         //organization controller
@@ -62,7 +62,7 @@ namespace JiraRestAPI.Services
             th.Start();
             th.Join();
             th2.Join();
-            var result = alluser.Where(x => !ousers.Any(y => y.key == x.key) && !x.emailAddress.Contains("atlassian.com")).ToList();
+            var result = alluser.Where(x => !ousers.Any(y => y.key == x.key) && !x.emailAddress.Contains("atlassian.com") && !x.emailAddress.Contains("@example.com")).ToList();
 
             return result;
         }
@@ -153,10 +153,9 @@ namespace JiraRestAPI.Services
             return orgusers;
         }
 
-
         public IssuesSearch GetIssuesByJQL(string jql)
         {
-            var obj = httpservice.Get<IssuesSearch>("api/2/search?jql=" + jql) as IssuesSearch;
+            var obj = httpservice.Get<IssuesSearch>("api/2/search?jql=" + jql.Replace("&","%26").Replace("+", "%2B").ToString()) as IssuesSearch;
 
             return obj;
         }
@@ -173,88 +172,119 @@ namespace JiraRestAPI.Services
             }
         }
 
-        public HttpStatusCode AddUserToOrganization(List<UserToOrganizationModel> model)
+        public List<OrganizationResponseModel> AddUserToOrganization(List<UserToOrganizationModel> model)
         {
-            HttpStatusCode adduser = HttpStatusCode.NoContent;
-
-            adduser = httpservice.Post(new { usernames = model.Select(x => x.username).ToList() }, "servicedeskapi/organization/" + model.Select(x => x.OrganizationId).First() + "/user");
-            //per cdo username bejme update organization id te 
-
-            foreach (var user in model)
+            List<OrganizationResponseModel> LISTMESSAGES = new List<OrganizationResponseModel>();
+          
+            var adduser = httpservice.Post(new { usernames = model.Select(x => x.username).ToList() }, "servicedeskapi/organization/" + model.Select(x => x.OrganizationId).First() + "/user");
+            //per cdo username bejme update organization id te issue nese vendosja ne organizae eshte me sukses
+            if (adduser.status)
             {
 
-                var issues = GetIssuesOfUsers(user.username);
-
-                foreach (var item in issues.issues)
-                {
-                    var req = new IssueOrganizationFiled();
-                    req.fields.customfield_10004.Add(Convert.ToInt32(user.OrganizationId));
-
-                    var response = httpservice.Put(req, "api/2/issue/" + item.key);
-
-                }
-
-                var commentdata = DataService.GetCompanyComments().Where(x => x.OrganizationId == user.OrganizationId.ToString()).FirstOrDefault();
-
-                if (commentdata != null)
-                {
-                    AddComentsIntoIssues(issues, commentdata.Comment, commentdata.customField_10075);
-                }
-
-
-            }
-
-
-
-            return adduser;
-
-
-        }
-        public HttpStatusCode ChangeUserOrganization(List<UserToOrganizationModel> model)
-        {
-
-            HttpStatusCode adduser = HttpStatusCode.NoContent;
-            HttpStatusCode deleteuser = HttpStatusCode.NoContent;
-            adduser = httpservice.Post(new { usernames = model.Select(x => x.username).ToList() }, "servicedeskapi/organization/" + model.Select(x => x.OrganizationId).First().ToString() + "/user");
-            deleteuser = httpservice.Delete(new { usernames = model.Select(x => x.username).ToList() }, "servicedeskapi/organization/" + model.Select(x => x.CurrentOgranizationId).First() + "/user");
-
-
-
-            if (adduser == HttpStatusCode.NoContent && deleteuser == HttpStatusCode.NoContent)
-            {
                 foreach (var user in model)
                 {
-
+                    var issueRes = new OrganizationResponseModel { UserKey = user.username,DisplayName=user.DisplayName };
+                    issueRes.Messages.Add(new BaseResponseMessage { status = true, message = "Useri u shtua me sukses ne organizate(if have lines below not all issues are assiged correctly into organization) !" });
+                    //issue of Users update organizationId
                     if (user.IssueUpdate)
                     {
                         var issues = GetIssuesOfUsers(user.username);
-                        var nr = 0;
+
+                        foreach (var item in issues.issues)
+                        {
+                            var req = new IssueOrganizationFiled();
+                            req.fields.customfield_10004.Add(Convert.ToInt32(user.OrganizationId));
+                            var IssueUpdate = httpservice.Put(req, "api/2/issue/" + item.key);
+                            if (!IssueUpdate.status)
+                            {
+                                issueRes.Messages.Add(IssueUpdate);
+                                //rollback 
+                                dataserviceinside.UpdateUserOrganization(new List<string>() { user.username }, "-1");
+                            }
+
+
+                        }
+                    }
+
+                    issueRes.CalculateStatus();
+                    LISTMESSAGES.Add(issueRes);
+
+                    //add comments in company
+                    var commentdata = DataService.GetCompanyComments().Where(x => x.OrganizationId == user.OrganizationId.ToString()).FirstOrDefault();
+
+                    if (commentdata != null)
+                    {
+                        var result = GetIssuesByJQL(commentdata.JQL);
+                        AddComentsIntoIssues(result, commentdata.Comment, commentdata.customField_10075);
+                    }
+
+
+                }
+
+                return LISTMESSAGES;
+
+
+            }
+            else
+            {
+
+                foreach (var item in model)
+                {
+
+                
+                    LISTMESSAGES.Add(new OrganizationResponseModel
+                    {
+                        UserKey = item.username,
+                        Messages = new List<Models.BaseResponseMessage> {
+                        new Models.BaseResponseMessage { message = adduser.message } }
+                    });
+                }
+                return LISTMESSAGES;
+            }
+
+
+        }
+        public List<OrganizationResponseModel> ChangeUserOrganization(List<UserToOrganizationModel> model)
+        {
+            List<OrganizationResponseModel> LISTMESSAGES = new List<OrganizationResponseModel>();
+
+            var   adduser = httpservice.Post(new { usernames = model.Select(x => x.username).ToList() }, "servicedeskapi/organization/" + model.Select(x => x.OrganizationId).First().ToString() + "/user");
+          var   deleteuser = httpservice.Delete(new { usernames = model.Select(x => x.username).ToList() }, "servicedeskapi/organization/" + model.Select(x => x.CurrentOgranizationId).First() + "/user");
+
+
+
+            if (adduser.status&&deleteuser.status)
+            {
+                foreach (var user in model)
+                {
+                    var issueRes = new OrganizationResponseModel { UserKey = user.username,DisplayName=user.DisplayName };
+                    issueRes.Messages.Add(new BaseResponseMessage { status = true, message = "User(i)/at ndrysh(oi)/uan  me sukses ne organizate (if have lines below not all issues are assiged correctly into organization) !" });
+                    if (user.IssueUpdate)
+                    {
+                        var issues = GetIssuesOfUsers(user.username);
+                 
                         foreach (var item in issues.issues)
                         {
                             var req = new IssueOrganizationFiled();
                             req.fields.customfield_10004.Add(Convert.ToInt32(user.OrganizationId));
                             var response = httpservice.Put(req, "api/2/issue/" + item.key);
-                            if (response == HttpStatusCode.NoContent)
+                            if (!response.status)
                             {
-                                nr++;
+                                issueRes.Messages.Add(response);
+                                //rollback 
+                                dataserviceinside.UpdateUserOrganization(new List<string>() { user.username }, user.CurrentOgranizationId);
                             }
 
                         }
 
-                        if (nr == issues.issues.Count)
-                        {
-                            adduser = HttpStatusCode.NoContent;
-                        }
-                        else
-                        {
-                            adduser = HttpStatusCode.InternalServerError;
-                        }
-
+                        issueRes.CalculateStatus();
+                        LISTMESSAGES.Add(issueRes);
                         var commentdata = DataService.GetCompanyComments().Where(x => x.OrganizationId == user.OrganizationId.ToString()).FirstOrDefault();
 
                         if (commentdata != null)
                         {
-                            AddComentsIntoIssues(issues, commentdata.Comment, commentdata.customField_10075);
+                            var result = GetIssuesByJQL(commentdata.JQL);
+                            AddComentsIntoIssues(result, commentdata.Comment, commentdata.customField_10075);
                         }
 
 
@@ -263,11 +293,20 @@ namespace JiraRestAPI.Services
                 }
 
 
-                return HttpStatusCode.NoContent;
+                return LISTMESSAGES;
             }
             else
             {
-                return HttpStatusCode.InternalServerError;
+                foreach (var item in model)
+                {
+                    LISTMESSAGES.Add(new OrganizationResponseModel
+                    {
+                        UserKey = item.username,
+                        Messages = new List<Models.BaseResponseMessage> {
+                        new Models.BaseResponseMessage { message = adduser.message+":"+deleteuser.message } }
+                    });
+                }
+                return LISTMESSAGES;
             }
 
         }
@@ -279,21 +318,28 @@ namespace JiraRestAPI.Services
             return httpservice.Get<IssuesSearch>("api/2/search?jql=project = 'SVD' and reporter=" + userid) as IssuesSearch;
         }
 
-        public HttpStatusCode RemoveUsersFromOrganization(List<UserToOrganizationModel> model)
+        public List<OrganizationResponseModel> RemoveUsersFromOrganization(List<UserToOrganizationModel> model)
         {
-
+            List<OrganizationResponseModel> list = new List<OrganizationResponseModel>();
+            
             var groupedusernames = model.GroupBy(x => x.OrganizationId).Select(x => new Tuple<string, List<string>>(x.Key, x.Select(y => y.username).ToList()));
 
             foreach (var item in groupedusernames)
             {
-                httpservice.Delete(new { usernames = item.Item2 }, "servicedeskapi/organization/" + item.Item2 + "/user");
+              var deleteusers=  httpservice.Delete(new { usernames = item.Item2 }, "servicedeskapi/organization/" + item.Item2 + "/user");
+
+                foreach (var u in item.Item2)
+                {
+                    list.Add(new OrganizationResponseModel { UserKey = u, Messages = new List<BaseResponseMessage> { new BaseResponseMessage { status = true, message = "Sukses" } } });
+                }
+
             }
 
-            return HttpStatusCode.NoContent;
+            return list;
         }
 
 
-        public HttpStatusCode AddCommentToIssue(string issueKey, CommentModel comment)
+        public BaseResponseMessage AddCommentToIssue(string issueKey, CommentModel comment)
         {
 
             return httpservice.Post(comment, "api/2/issue/" + issueKey + "/comment");
@@ -311,7 +357,7 @@ namespace JiraRestAPI.Services
 
             var res2 = httpservice.Post(new { organizationId = res1.id }, "servicedeskapi/servicedesk/SVD/organization");
 
-            if (res2 == HttpStatusCode.NoContent)
+            if (res2.status)
             {
                 dataserviceinside.UpdateJiraOrganizationId(OrganizationName.id.ToString(), res1.name, res1.id);
                 return HttpStatusCode.NoContent;
@@ -319,7 +365,7 @@ namespace JiraRestAPI.Services
             return HttpStatusCode.InternalServerError;
         }
 
-        public HttpStatusCode DeleteOrganization(Organization model)
+        public BaseResponseMessage DeleteOrganization(Organization model)
         {
             return httpservice.Delete(new object(), "servicedeskapi/organization/" + model.id);
         }
@@ -327,10 +373,8 @@ namespace JiraRestAPI.Services
 
         //user controller
 
-        public HttpStatusCode DeleteUser(DeleteUserModel model)
+        public BaseResponseMessage DeleteUser(DeleteUserModel model)
         {
-
-
             return httpservice.Delete(new object(), "api/2/user?query=key=" + model.key + "&username=" + model.username);
         }
 
@@ -346,7 +390,7 @@ namespace JiraRestAPI.Services
             foreach (var item in issuesBag.issues)
             {
                 var response = httpservice.Delete(new object(), "api/2/issue/" + item.key + "?query=deleteSubtasks=true");
-                if (response == HttpStatusCode.NoContent)
+                if (response.status)
                 {
                     nr++;
                 }
@@ -365,7 +409,7 @@ namespace JiraRestAPI.Services
         }
 
 
-        public HttpStatusCode ChangeReporterOfIssues(string currentuser, string nextuser)
+        public HttpStatusCode ChangeReporterOfIssues(string currentuser, string nextuser,string nextorganizationId)
         {
             var issuesBag = GetIssuesOfUsers(currentuser);
             if (issuesBag == null)
@@ -375,11 +419,14 @@ namespace JiraRestAPI.Services
             //numri qe mban sa rekorde jane update-uar ne rregull, nese nuk update-ohen te gjitha rekordet nuk quhet update i sukseshem
             int nr = 0;
 
+            //change reporter and organizationId for issues
             ReporterBodyRequest reportedupdate = new ReporterBodyRequest(nextuser);
+            reportedupdate.fields.customfield_10004.Add(Convert.ToInt32(nextorganizationId));
             foreach (var item in issuesBag.issues)
             {
                 var response = httpservice.Put(reportedupdate, "api/2/issue/" + item.key);
-                if (response == HttpStatusCode.NoContent)
+
+                if (response.status)
                 {
                     nr++;
                 }

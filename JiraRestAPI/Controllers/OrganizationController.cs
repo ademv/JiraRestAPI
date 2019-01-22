@@ -1,4 +1,5 @@
-﻿using JiraRestAPI.Models.Organization;
+﻿using JiraRestAPI.Models;
+using JiraRestAPI.Models.Organization;
 using JiraRestAPI.Models.Users;
 using JiraRestAPI.Services;
 using System;
@@ -36,21 +37,12 @@ namespace JiraRestAPI.Controllers
             if (IMSInsert)
             {
 
-                string msg;
+
 
                 var response = jiraservice.AddUserToOrganization(model);
-                if (response == HttpStatusCode.NoContent)
-                {
-                    msg = "Perdoruesi/t u shtua/n me sukses ne organizate,Jira level  !";
 
-                }
-                else
-                {
-                    msg = "Perdoruesi/t nuk u shtua/n ne organizate, Jira " + response.ToString() + " ::  Reference: https://developer.atlassian.com/cloud/jira/service-desk/rest/#api-organization-organizationId-user-post";
 
-                }
-
-                return Ok(msg);
+                return Ok(PrepareFinalResult(response));
             }
             else
             {
@@ -74,17 +66,7 @@ namespace JiraRestAPI.Controllers
             if (IMSInsert)
             {
                 var response = jiraservice.ChangeUserOrganization(model);
-                string msg;
-                if (response == HttpStatusCode.NoContent)
-                {
-                    msg = "Perdoruesi/t u shtua/n me sukses ne organizate,Jira level  !";
-                }
-                else
-                {
-                    msg = "Perdoruesi/t nuk u shtua/n ne organizate, Jira " + response.ToString() + " ::  Reference: https://developer.atlassian.com/cloud/jira/service-desk/rest/#api-organization-organizationId-user-post";
-                }
-                // dataservise.UpdateUserSync(model.usernames, type, model.IssueUpdate, "",model.OrganizationId);
-                return Ok(msg);
+                return Ok(PrepareFinalResult(response));
             }
             else
             {
@@ -108,21 +90,8 @@ namespace JiraRestAPI.Controllers
             var isdeleted = dataservise.UpdateUserOrganization(model.Select(x => x.username).ToList(), "-1");
             if (isdeleted)
             {
-                string msg;
-                var response = jiraservice.RemoveUsersFromOrganization(model);
-
-                if (response == HttpStatusCode.NoContent)
-                {
-
-                    msg = "Perdoruesi/t u hoq/en nga organizata me sukses !";
-                }
-                else
-                {
-                    msg = " Perdoruesi/t nuk u fshi/ne nga Statusi nga Jira: " + response.ToString() + "  Reference: https://developer.atlassian.com/cloud/jira/service-desk/rest/#api-organization-organizationId-user-delete";
-                }
-
-                //  dataservise.UpdateUserSync(model.usernames, type, model.IssueUpdate, "",model.OrganizationId);
-                return Ok(msg);
+                var response = jiraservice.RemoveUsersFromOrganization(model);               
+                return Ok(PrepareFinalResult(response));
             }
             else
             {
@@ -168,24 +137,16 @@ namespace JiraRestAPI.Controllers
                 return BadRequest();
             }
 
+            var response = jiraservice.DeleteOrganization(model);
 
-            var logicalDelete = dataservise.DeleteOrganization(model.id);
 
-            if (logicalDelete)
+            if (response.status)
             {
-                var response = jiraservice.DeleteOrganization(model);
 
-                if (response == HttpStatusCode.NoContent)
-                {
-                    return Ok("Organizata u fshi me sukses");
-                }
+                var logicalDelete = dataservise.DeleteOrganization(model.id);
+            }
+            return Ok(response.message);
 
-                return Ok(new Exception("Statusi nga Jira:" + response.ToString() + "  Reference : https://developer.atlassian.com/cloud/jira/service-desk/rest/#api-organization-organizationId-delete"));
-            }
-            else
-            {
-                return InternalServerError(new Exception("Organizata nuk u fshij me sukses, IMS level"));
-            }
         }
 
         [HttpGet]
@@ -251,5 +212,13 @@ namespace JiraRestAPI.Controllers
             return Ok(response);
         }
 
+
+        private TransactionModel PrepareFinalResult(List<OrganizationResponseModel> list)
+        {
+            var allrecordok = list.Where(x => x.Messages.Where(y => y.status == false).Any() == true).Any();
+
+            return new TransactionModel { Status = !allrecordok, Data = list };
+        }
+       
     }
 }

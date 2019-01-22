@@ -58,16 +58,20 @@ namespace JiraRestAPI.Models.Issue
         public ReportedField(string name)
         {
             reporter = new Reporter(name);
+            customfield_10004 = new List<int>();
         }
         public Reporter reporter { get; set; }
+        public IList<int> customfield_10004 { get; set; }
     }
     public class Reporter
     {
         public Reporter(string name)
         {
             this.name = name;
+           
         }
         public string name { get; set; }
+         public IList<int> customfield_10004 { get; set; }
     }
 
 }
